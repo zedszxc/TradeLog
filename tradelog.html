@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradeLog - Crypto Trade Journal & Performance Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDK Compat Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#0f172a',
+                        cardbg: '#1e293b',
+                        bordercol: '#334155',
+                        brandred: '#ef4444',
+                        brandgreen: '#10b981'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-darkbg text-slate-100 font-sans antialiased min-h-screen flex flex-col justify-between">
+
+    <!-- AUTHENTICATION VIEW -->
+    <div id="authView" class="flex flex-col items-center justify-center flex-grow p-4">
+        <div class="max-w-md w-full bg-cardbg border border-bordercol rounded-2xl shadow-2xl p-8">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600/20 text-blue-400 mb-3 border border-blue-500/30">
+                    <i class="fa-solid fa-chart-line text-xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold tracking-tight text-white">TradeLog</h1>
+                <p class="text-xs text-slate-400 mt-1">Cryptocurrency Trade Journal & Performance System</p>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div class="flex bg-slate-900 p-1 rounded-xl mb-6 border border-bordercol">
+                <button id="loginTabBtn" onclick="switchAuthTab('login')" class="flex-1 py-2 text-xs font-semibold rounded-lg bg-blue-600 text-white shadow transition-all">Sign In</button>
+                <button id="registerTabBtn" onclick="switchAuthTab('register')" class="flex-1 py-2 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all">Register</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Email Address</label>
+                    <input type="email" id="loginEmail" required class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Password</label>
+                    <input type="password" id="loginPassword" required class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl shadow transition-all">Sign In to Dashboard</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Full Name</label>
+                    <input type="text" id="regName" required class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Email Address</label>
+                    <input type="email" id="regEmail" required class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Password</label>
+                    <input type="password" id="regPassword" required class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">System Role</label>
+                        <select id="regRole" class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                            <option value="trader">Trader</option>
+                            <option value="admin">Administrator / Mentor</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Platform</label>
+                        <select id="regExchange" class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                            <option value="Binance">Binance</option>
+                            <option value="Bybit">Bybit</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-xl shadow transition-all">Create Account</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN APP VIEW (Hidden until login) -->
+    <div id="mainAppView" class="hidden flex flex-col flex-grow">
+        <!-- Top Navbar -->
+        <header class="border-b border-bordercol bg-cardbg/50 backdrop-blur sticky top-0 z-30">
+            <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center border border-blue-500/30">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <span class="font-bold text-white text-base">TradeLog</span>
+                        <span id="userRoleBadge" class="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 ml-2 font-medium">Trader</span>
+                    </div>
+                </div>
+
+                <!-- Navigation Links for Trader -->
+                <nav id="traderNav" class="hidden items-center space-x-1">
+                    <button id="navDashboard" onclick="switchTab('dashboard')" class="px-4 py-2 text-xs font-medium rounded-lg bg-blue-600 text-white transition-all">Dashboard</button>
+                    <button id="navJournal" onclick="switchTab('journal')" class="px-4 py-2 text-xs font-medium rounded-lg text-slate-300 hover:text-white transition-all">Trade Journal</button>
+                    <button id="navProfile" onclick="switchTab('profile')" class="px-4 py-2 text-xs font-medium rounded-lg text-slate-300 hover:text-white transition-all">Profile</button>
+                </nav>
+
+                <!-- Navigation Links for Admin -->
+                <nav id="adminNav" class="hidden items-center space-x-1">
+                    <button id="navAdminOverview" onclick="switchAdminTab('overview')" class="px-4 py-2 text-xs font-medium rounded-lg bg-cyan-600 text-white transition-all">Trainees Overview</button>
+                    <button id="navAdminReports" onclick="switchAdminTab('reports')" class="px-4 py-2 text-xs font-medium rounded-lg text-slate-300 hover:text-white transition-all">Strategy Analytics</button>
+                    <button id="navAdminProfile" onclick="switchTab('profile')" class="px-4 py-2 text-xs font-medium rounded-lg text-slate-300 hover:text-white transition-all">Profile</button>
+                </nav>
+
+                <!-- User Profile & Logout -->
+                <div class="flex items-center space-x-3">
+                    <div class="text-right hidden sm:block">
+                        <div id="currentUserName" class="text-xs font-bold text-white">User Name</div>
+                        <div id="currentExchangeLbl" class="text-[10px] text-slate-400">Binance User</div>
+                    </div>
+                    <button onclick="handleLogout()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-bordercol transition-all text-xs" title="Sign Out">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content Body -->
+        <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
+            
+            <!-- TRADER: DASHBOARD TAB -->
+            <div id="tabDashboard" class="space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Performance Dashboard</h2>
+                        <p class="text-xs text-slate-400">Overview of your trading metrics, win rate, and profit history.</p>
+                    </div>
+                    <button onclick="openAddTradeModal()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow transition-all flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Record Completed Trade</span>
+                    </button>
+                </div>
+
+                <!-- Stats Cards Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div class="bg-cardbg border border-bordercol rounded-2xl p-4">
+                        <div class="flex items-center justify-between text-slate-400 text-xs">
+                            <span>Total Trades</span>
+                            <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center"><i class="fa-solid fa-layer-group text-sm"></i></div>
+                        </div>
+                        <div id="statTotalTrades" class="text-2xl font-bold mt-3 text-white">0</div>
+                    </div>
+                    <div class="bg-cardbg border border-bordercol rounded-2xl p-4">
+                        <div class="flex items-center justify-between text-slate-400 text-xs">
+                            <span>Win Rate</span>
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center"><i class="fa-solid fa-trophy text-sm"></i></div>
+                        </div>
+                        <div id="statWinRate" class="text-2xl font-bold mt-3 text-emerald-400">0%</div>
+                    </div>
+                    <div class="bg-cardbg border border-bordercol rounded-2xl p-4">
+                        <div class="flex items-center justify-between text-slate-400 text-xs">
+                            <span>Total PnL</span>
+                            <div id="statPnLIcon" class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center"><i class="fa-solid fa-wallet text-sm"></i></div>
+                        </div>
+                        <div id="statTotalPnL" class="text-2xl font-bold mt-3 text-emerald-400">$0.00</div>
+                    </div>
+                    <div class="bg-cardbg border border-bordercol rounded-2xl p-4">
+                        <div class="flex items-center justify-between text-slate-400 text-xs">
+                            <span>Wins / Losses</span>
+                            <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center"><i class="fa-solid fa-scale-balanced text-sm"></i></div>
+                        </div>
+                        <div class="text-xl font-bold mt-3 text-white"><span id="statWins" class="text-emerald-400">0</span> / <span id="statLosses" class="text-brandred">0</span></div>
+                    </div>
+                    <div class="bg-cardbg border border-bordercol rounded-2xl p-4">
+                        <div class="flex items-center justify-between text-slate-400 text-xs">
+                            <span>Exchange Platform</span>
+                            <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center"><i class="fa-solid fa-building-columns text-sm"></i></div>
+                        </div>
+                        <div id="statExchange" class="text-xl font-bold mt-3 text-amber-400">Binance</div>
+                    </div>
+                </div>
+
+                <!-- Charts & Strategy Breakdown -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 bg-cardbg border border-bordercol rounded-2xl p-5 flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-sm text-white">Profit & Loss Performance Bar Chart</h3>
+                            <span class="text-xs text-slate-400">Recent Trades</span>
+                        </div>
+                        <div id="chartBarsContainer" class="h-64 flex items-end gap-2 border-b border-bordercol pb-2 pt-6 px-2 overflow-x-auto">
+                            <!-- Dynamic Bars injected via JS -->
+                        </div>
+                    </div>
+
+                    <div class="bg-cardbg border border-bordercol rounded-2xl p-5">
+                        <h3 class="font-bold text-sm text-white mb-4">Trading Strategy Breakdown</h3>
+                        <div id="strategyBreakdown" class="space-y-4">
+                            <!-- Dynamic Strategy Progress injected via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TRADER: JOURNAL TAB -->
+            <div id="tabJournal" class="hidden space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Trade Journal History</h2>
+                        <p class="text-xs text-slate-400">Search, filter, edit, and review all your past cryptocurrency trades.</p>
+                    </div>
+                    <button onclick="openAddTradeModal()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow transition-all flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Add New Trade</span>
+                    </button>
+                </div>
+
+                <!-- Search & Filters -->
+                <div class="bg-cardbg border border-bordercol rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div class="sm:col-span-2 relative">
+                        <i class="fa-solid fa-search absolute left-3 top-3 text-slate-400 text-xs"></i>
+                        <input type="text" id="searchInput" oninput="filterTrades()" placeholder="Search by crypto pair, strategy, or notes..." class="w-full bg-slate-900 border border-bordercol rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <select id="filterType" onchange="filterTrades()" class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                            <option value="">All Trade Types</option>
+                            <option value="Long">Long</option>
+                            <option value="Short">Short</option>
+                        </select>
+                    </div>
+                    <div class="flex space-x-2">
+                        <select id="filterStrategy" onchange="filterTrades()" class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                            <option value="">All Strategies</option>
+                            <option value="Day Trading">Day Trading</option>
+                            <option value="Scalping">Scalping</option>
+                            <option value="Swing Trading">Swing Trading</option>
+                            <option value="Breakout">Breakout</option>
+                        </select>
+                        <button onclick="resetFilters()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-bordercol text-xs transition-all" title="Reset Filters"><i class="fa-solid fa-rotate-right"></i></button>
+                    </div>
+                </div>
+
+                <!-- Trades Table -->
+                <div class="bg-cardbg border border-bordercol rounded-2xl overflow-hidden shadow-xl">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-900/60 border-b border-bordercol text-slate-400 uppercase tracking-wider text-[10px]">
+                                    <th class="py-3 px-4 font-semibold">Crypto Pair</th>
+                                    <th class="py-3 px-4 font-semibold">Type</th>
+                                    <th class="py-3 px-4 font-semibold">Entry / Exit</th>
+                                    <th class="py-3 px-4 font-semibold">Qty / Lev</th>
+                                    <th class="py-3 px-4 font-semibold">Strategy</th>
+                                    <th class="py-3 px-4 font-semibold">Profit / Loss</th>
+                                    <th class="py-3 px-4 font-semibold">Date</th>
+                                    <th class="py-3 px-4 font-semibold text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tradesTableBody" class="divide-y divide-bordercol/40">
+                                <!-- Dynamic Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="emptyTradesMsg" class="hidden p-8 text-center text-slate-500 text-xs">No trade records found. Click "Add New Trade" to get started.</div>
+                </div>
+            </div>
+
+            <!-- ADMIN: TRAINEES OVERVIEW TAB -->
+            <div id="tabAdminOverview" class="hidden space-y-6">
+                <div>
+                    <h2 class="text-xl font-bold text-white">Administrator & Mentor Overview</h2>
+                    <p class="text-xs text-slate-400">Review all registered trader accounts, track student win rates, and monitor journal logs.</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-cardbg border border-bordercol rounded-2xl p-4">
+                        <div class="text-slate-400 text-xs">Registered Trainees</div>
+                        <div id="adminTotalUsers" class="text-2xl font-bold mt-2 text-white">0</div>
+                    </div>
+                    <div class="bg-cardbg border border-bordercol rounded-2xl p-4">
+                        <div class="text-slate-400 text-xs">Total System Trade Logs</div>
+                        <div id="adminTotalTrades" class="text-2xl font-bold mt-2 text-cyan-400">0</div>
+                    </div>
+                    <div class="bg-cardbg border border-bordercol rounded-2xl p-4">
+                        <div class="text-slate-400 text-xs">Platform Overall Win Rate</div>
+                        <div id="adminAvgWinRate" class="text-2xl font-bold mt-2 text-emerald-400">0%</div>
+                    </div>
+                </div>
+
+                <div class="bg-cardbg border border-bordercol rounded-2xl overflow-hidden shadow-xl">
+                    <div class="p-4 border-b border-bordercol font-bold text-sm text-white">Trainee Accounts & Performance</div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-900/60 border-b border-bordercol text-slate-400 uppercase tracking-wider text-[10px]">
+                                    <th class="py-3 px-4 font-semibold">Trainee Name</th>
+                                    <th class="py-3 px-4 font-semibold">Email</th>
+                                    <th class="py-3 px-4 font-semibold">Platform</th>
+                                    <th class="py-3 px-4 font-semibold">Total Logs</th>
+                                    <th class="py-3 px-4 font-semibold">Performance</th>
+                                    <th class="py-3 px-4 font-semibold text-right">Review</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminUsersTableBody" class="divide-y divide-bordercol/40">
+                                <!-- Dynamic Admin Users -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADMIN: REPORTS TAB -->
+            <div id="tabAdminReports" class="hidden space-y-6">
+                <div>
+                    <h2 class="text-xl font-bold text-white">System Strategy Analytics</h2>
+                    <p class="text-xs text-slate-400">Aggregated breakdown of popular trading strategies across all users.</p>
+                </div>
+                <div class="bg-cardbg border border-bordercol rounded-2xl p-5 max-w-xl">
+                    <h3 class="font-bold text-sm text-white mb-4">Global Strategy Usage</h3>
+                    <div id="adminStrategyStats" class="space-y-4"></div>
+                </div>
+            </div>
+
+            <!-- PROFILE TAB -->
+            <div id="tabProfile" class="hidden space-y-6">
+                <div>
+                    <h2 class="text-xl font-bold text-white">User Profile & Account</h2>
+                    <p class="text-xs text-slate-400">Manage your credentials and preferred exchange platform settings.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-cardbg border border-bordercol rounded-2xl p-6 text-center flex flex-col items-center justify-center">
+                        <div id="profileAvatarLetter" class="w-16 h-16 rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/30 font-bold text-2xl flex items-center justify-center mb-3">T</div>
+                        <h3 id="profileFullName" class="font-bold text-white text-base">User Name</h3>
+                        <p id="profileEmail" class="text-xs text-slate-400 mb-3">user@tradelog.com</p>
+                        <span id="profileRoleBadge" class="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium">Trader</span>
+                    </div>
+
+                    <div class="bg-cardbg border border-bordercol rounded-2xl p-6 md:col-span-2">
+                        <h3 class="font-bold text-sm text-white mb-4">Edit Profile Preferences</h3>
+                        <form onsubmit="handleUpdateProfile(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Full Name</label>
+                                <input type="text" id="profName" required class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Email Address</label>
+                                <input type="email" id="profEmail" disabled class="w-full bg-slate-900/50 border border-bordercol rounded-xl px-3 py-2 text-xs text-slate-500 cursor-not-allowed">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Preferred Exchange Platform</label>
+                                <select id="profExchange" class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                                    <option value="Binance">Binance</option>
+                                    <option value="Bybit">Bybit</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow transition-all">Save Changes</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="border-t border-bordercol py-4 text-center text-xs text-slate-500">
+            TradeLog System &copy; 2026 - Academic Project Prototype (Firebase Connected)
+        </footer>
+    </div>
+
+    <!-- ADD/EDIT TRADE MODAL -->
+    <div id="tradeModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-cardbg border border-bordercol rounded-2xl max-w-lg w-full p-6 shadow-2xl my-8">
+            <div class="flex items-center justify-between mb-4">
+                <h3 id="tradeModalTitle" class="font-bold text-sm text-white">Record Completed Trade</h3>
+                <button onclick="closeTradeModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="tradeForm" onsubmit="handleSaveTrade(event)" class="space-y-3">
+                <input type="hidden" id="editTradeId">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-300 mb-1">Crypto Pair</label>
+                        <input type="text" id="tradePair" required placeholder="e.g. BTCUSDT" class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-xs text-white uppercase focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-300 mb-1">Trade Type</label>
+                        <select id="tradeType" onchange="calculateLivePnL()" class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                            <option value="Long">Long</option>
+                            <option value="Short">Short</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-300 mb-1">Entry Price ($)</label>
+                        <input type="number" step="any" id="tradeEntry" oninput="calculateLivePnL()" required class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-300 mb-1">Exit Price ($)</label>
+                        <input type="number" step="any" id="tradeExit" oninput="calculateLivePnL()" required class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-300 mb-1">Quantity</label>
+                        <input type="number" step="any" id="tradeQty" oninput="calculateLivePnL()" required class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-300 mb-1">Leverage</label>
+                        <select id="tradeLeverage" onchange="calculateLivePnL()" class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                            <option value="1x">1x</option>
+                            <option value="5x">5x</option>
+                            <option value="10x">10x</option>
+                            <option value="20x">20x</option>
+                            <option value="50x">50x</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-300 mb-1">Strategy</label>
+                        <select id="tradeStrategy" class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                            <option value="Day Trading">Day Trading</option>
+                            <option value="Scalping">Scalping</option>
+                            <option value="Swing Trading">Swing Trading</option>
+                            <option value="Breakout">Breakout</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-300 mb-1">Date</label>
+                    <input type="date" id="tradeDate" required class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                </div>
+
+                <div class="bg-slate-900 border border-bordercol rounded-xl p-3 flex items-center justify-between">
+                    <span class="text-xs text-slate-400">Calculated PnL Preview:</span>
+                    <span id="livePnLPreview" class="text-xs font-bold text-slate-300">$0.00 (0.00%)</span>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-300 mb-1">Personal Notes & Analysis</label>
+                    <textarea id="tradeNotes" rows="2" placeholder="Why did you take this trade? Lessons learned..." class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-medium text-slate-300 mb-1">Screenshot Image URL</label>
+                    <input type="url" id="tradeScreenshot" placeholder="https://..." class="w-full bg-slate-900 border border-bordercol rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeTradeModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-all">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow transition-all">Save Trade</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- VIEW DETAILS MODAL -->
+    <div id="viewModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-cardbg border border-bordercol rounded-2xl max-w-xl w-full p-6 shadow-2xl my-8">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-2">
+                    <h3 id="viewPairBadge" class="font-bold text-base text-white">BTCUSDT</h3>
+                    <span id="viewTypeBadge" class="px-2.5 py-0.5 rounded text-xs font-semibold">Long</span>
+                </div>
+                <button onclick="closeViewModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div class="bg-slate-900 p-3 rounded-xl border border-bordercol">
+                    <div class="text-[10px] text-slate-400">Entry Price</div>
+                    <div id="viewEntry" class="text-xs font-bold text-white mt-1">$0.00</div>
+                </div>
+                <div class="bg-slate-900 p-3 rounded-xl border border-bordercol">
+                    <div class="text-[10px] text-slate-400">Exit Price</div>
+                    <div id="viewExit" class="text-xs font-bold text-white mt-1">$0.00</div>
+                </div>
+                <div class="bg-slate-900 p-3 rounded-xl border border-bordercol">
+                    <div class="text-[10px] text-slate-400">Qty / Lev</div>
+                    <div id="viewQtyLev" class="text-xs font-bold text-white mt-1">0 / 1x</div>
+                </div>
+                <div class="bg-slate-900 p-3 rounded-xl border border-bordercol">
+                    <div class="text-[10px] text-slate-400">Profit / Loss</div>
+                    <div id="viewPnL" class="text-xs font-bold text-emerald-400 mt-1">$0.00</div>
+                </div>
+            </div>
+
+            <div class="space-y-3 mb-4 text-xs">
+                <div class="flex justify-between bg-slate-900/50 p-2.5 rounded-xl border border-bordercol">
+                    <span class="text-slate-400">Strategy:</span>
+                    <span id="viewStrategy" class="font-medium text-white">Day Trading</span>
+                </div>
+                <div class="flex justify-between bg-slate-900/50 p-2.5 rounded-xl border border-bordercol">
+                    <span class="text-slate-400">Date Recorded:</span>
+                    <span id="viewDate" class="font-medium text-white">2026-09-01</span>
+                </div>
+                <div>
+                    <span class="text-slate-400 block mb-1">Personal Notes:</span>
+                    <div id="viewNotes" class="bg-slate-900 p-3 rounded-xl border border-bordercol text-slate-300 italic">No notes.</div>
+                </div>
+            </div>
+
+            <div>
+                <span class="text-slate-400 block mb-1 text-xs">Trade Setup Screenshot:</span>
+                <img id="viewScreenshotImg" src="" alt="Trade Screenshot" class="w-full h-48 object-cover rounded-xl border border-bordercol bg-slate-900">
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE INITIALIZATION & APPLICATION LOGIC -->
+    <script>
+        // Your Firebase Configuration Keys
+        const firebaseConfig = {
+            apiKey: "AIzaSyBt3Cr7WqFIeLtfLV43zYBXb80TAPxHG-M",
+            authDomain: "tradelog-7f24e.firebaseapp.com",
+            projectId: "tradelog-7f24e",
+            storageBucket: "tradelog-7f24e.firebasestorage.app",
+            messagingSenderId: "397840961489",
+            appId: "1:397840961489:web:f717e7a4b811f6e7621af0"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let currentUser = null;
+        let trades = [];
+        let allUsers = [];
+
+        // --- AUTH TABS ---
+        function switchAuthTab(tab) {
+            const loginTab = document.getElementById('loginTabBtn');
+            const regTab = document.getElementById('registerTabBtn');
+            const loginForm = document.getElementById('loginForm');
+            const regForm = document.getElementById('registerForm');
+
+            if (tab === 'login') {
+                loginTab.className = "flex-1 py-2 text-xs font-semibold rounded-lg bg-blue-600 text-white shadow transition-all";
+                regTab.className = "flex-1 py-2 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all";
+                loginForm.classList.remove('hidden');
+                regForm.classList.add('hidden');
+            } else {
+                regTab.className = "flex-1 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white shadow transition-all";
+                loginTab.className = "flex-1 py-2 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all";
+                regForm.classList.remove('hidden');
+                loginForm.classList.add('hidden');
+            }
+        }
+
+        // --- AUTH HANDLERS ---
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const pass = document.getElementById('loginPassword').value;
+
+            auth.signInWithEmailAndPassword(email, pass)
+                .then((cred) => {
+                    return db.collection("users").doc(cred.user.uid).get();
+                })
+                .then((doc) => {
+                    if (doc.exists) {
+                        currentUser = { id: doc.id, ...doc.data() };
+                        initAppSession();
+                    } else {
+                        alert("User profile record not found in Firestore.");
+                    }
+                })
+                .catch(err => alert("Login Error: " + err.message));
+        }
+
+        function handleRegister(e) {
+            e.preventDefault();
+            const name = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value;
+            const pass = document.getElementById('regPassword').value;
+            const role = document.getElementById('regRole').value;
+            const exchange = document.getElementById('regExchange').value;
+
+            auth.createUserWithEmailAndPassword(email, pass)
+                .then((cred) => {
+                    const uid = cred.user.uid;
+                    const userData = { name, email, role, exchange, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
+                    return db.collection("users").doc(uid).set(userData).then(() => {
+                        currentUser = { id: uid, ...userData };
+                        initAppSession();
+                    });
+                })
+                .catch(err => alert("Registration Error: " + err.message));
+        }
+
+        function handleLogout() {
+            auth.signOut().then(() => {
+                currentUser = null;
+                document.getElementById('authView').classList.remove('hidden');
+                document.getElementById('mainAppView').classList.add('hidden');
+            });
+        }
+
+        // --- SESSION INITIALIZER ---
+        function initAppSession() {
+            if (!currentUser) return;
+            document.getElementById('authView').classList.add('hidden');
+            document.getElementById('mainAppView').classList.remove('hidden');
+
+            document.getElementById('currentUserName').innerText = currentUser.name;
+            document.getElementById('currentExchangeLbl').innerText = `${currentUser.exchange} User`;
+            document.getElementById('profileFullName').innerText = currentUser.name;
+            document.getElementById('profileEmail').innerText = currentUser.email;
+            document.getElementById('profileAvatarLetter').innerText = currentUser.name.charAt(0).toUpperCase();
+
+            document.getElementById('profName').value = currentUser.name;
+            document.getElementById('profEmail').value = currentUser.email;
+            document.getElementById('profExchange').value = currentUser.exchange;
+
+            const traderNav = document.getElementById('traderNav');
+            const adminNav = document.getElementById('adminNav');
+            const roleBadge = document.getElementById('userRoleBadge');
+            const profileRoleBadge = document.getElementById('profileRoleBadge');
+
+            if (currentUser.role === 'admin') {
+                traderNav.classList.add('hidden');
+                adminNav.classList.remove('hidden');
+                adminNav.classList.add('flex');
+                roleBadge.innerText = 'Administrator / Mentor';
+                roleBadge.className = "text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 ml-2 font-medium";
+                profileRoleBadge.innerText = 'Administrator / Mentor';
+                switchAdminTab('overview');
+            } else {
+                adminNav.classList.add('hidden');
+                traderNav.classList.remove('hidden');
+                roleBadge.innerText = 'Trader';
+                roleBadge.className = "text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 ml-2 font-medium";
+                profileRoleBadge.innerText = 'Trader';
+                switchTab('dashboard');
+            }
+
+            fetchTradesFromFirestore();
+        }
+
+        // --- NAVIGATION TABS ---
+        function switchTab(tabName) {
+            ['dashboard', 'journal', 'profile'].forEach(t => {
+                const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+                if (el) el.classList.add('hidden');
+            });
+            ['tabAdminOverview', 'tabAdminReports'].forEach(t => {
+                const el = document.getElementById(t);
+                if (el) el.classList.add('hidden');
+            });
+
+            ['navDashboard', 'navJournal', 'navProfile', 'navAdminOverview', 'navAdminReports', 'navAdminProfile'].forEach(n => {
+                const btn = document.getElementById(n);
+                if (btn) btn.className = "px-4 py-2 text-xs font-medium rounded-lg text-slate-300 hover:text-white transition-all";
+            });
+
+            const activeTab = document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
+            if (activeTab) activeTab.classList.remove('hidden');
+            
+            const activeBtn = document.getElementById('nav' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
+            if (activeBtn) activeBtn.className = "px-4 py-2 text-xs font-medium rounded-lg bg-blue-600 text-white transition-all";
+
+            if (tabName === 'dashboard') renderDashboard();
+            if (tabName === 'journal') renderTradesTable();
+        }
+
+        function switchAdminTab(tabName) {
+            document.getElementById('tabAdminOverview').classList.add('hidden');
+            document.getElementById('tabAdminReports').classList.add('hidden');
+            document.getElementById('tabDashboard').classList.add('hidden');
+            document.getElementById('tabJournal').classList.add('hidden');
+            document.getElementById('tabProfile').classList.add('hidden');
+
+            document.getElementById('navAdminOverview').className = "px-4 py-2 text-xs font-medium rounded-lg text-slate-300 hover:text-white transition-all";
+            document.getElementById('navAdminReports').className = "px-4 py-2 text-xs font-medium rounded-lg text-slate-300 hover:text-white transition-all";
+
+            if (tabName === 'overview') {
+                document.getElementById('tabAdminOverview').classList.remove('hidden');
+                document.getElementById('navAdminOverview').className = "px-4 py-2 text-xs font-medium rounded-lg bg-cyan-600 text-white transition-all";
+                renderAdminOverview();
+            } else {
+                document.getElementById('tabAdminReports').classList.remove('hidden');
+                document.getElementById('navAdminReports').className = "px-4 py-2 text-xs font-medium rounded-lg bg-cyan-600 text-white transition-all";
+                renderAdminReports();
+            }
+        }
+
+        // --- PNL MATH ---
+        function computePnL(type, entry, exit, qty, levNum = 1) {
+            let diff = type === 'Long' ? (exit - entry) : (entry - exit);
+            let rawPnL = diff * qty * levNum;
+            let percent = ((diff / entry) * 100) * levNum;
+            return { pnl: rawPnL, percent: percent };
+        }
+
+        function calculateLivePnL() {
+            const type = document.getElementById('tradeType').value;
+            const entry = parseFloat(document.getElementById('tradeEntry').value) || 0;
+            const exit = parseFloat(document.getElementById('tradeExit').value) || 0;
+            const qty = parseFloat(document.getElementById('tradeQty').value) || 0;
+            const levStr = document.getElementById('tradeLeverage').value;
+            const levNum = parseInt(levStr.replace('x', '')) || 1;
+
+            const res = computePnL(type, entry, exit, qty, levNum);
+            const preview = document.getElementById('livePnLPreview');
+            
+            if (res.pnl >= 0) {
+                preview.className = "text-xs font-bold text-emerald-400";
+                preview.innerText = `+$${res.pnl.toFixed(2)} (+${res.percent.toFixed(2)}%)`;
+            } else {
+                preview.className = "text-xs font-bold text-brandred";
+                preview.innerText = `-$${Math.abs(res.pnl).toFixed(2)} (${res.percent.toFixed(2)}%)`;
+            }
+        }
+
+        // --- FIRESTORE DATA SYNC ---
+        function fetchTradesFromFirestore() {
+            let query = db.collection("trades");
+            if (currentUser.role !== 'admin') {
+                query = query.where("userId", "==", currentUser.id);
+            }
+
+            query.get().then((snapshot) => {
+                trades = [];
+                snapshot.forEach((doc) => {
+                    trades.push({ id: doc.id, ...doc.data() });
+                });
+                renderDashboard();
+                renderTradesTable();
+                if (currentUser.role === 'admin') {
+                    db.collection("users").where("role", "==", "trader").get().then((userSnap) => {
+                        allUsers = [];
+                        userSnap.forEach(d => allUsers.push({ id: d.id, ...d.data() }));
+                        renderAdminOverview();
+                        renderAdminReports();
+                    });
+                }
+            }).catch(err => console.error("Error fetching trades:", err));
+        }
+
+        // --- TRADER DASHBOARD ---
+        function renderDashboard() {
+            const userTrades = currentUser.role === 'admin' ? trades : trades.filter(t => t.userId === currentUser.id);
+            const total = userTrades.length;
+            let wins = 0, losses = 0, totalPnL = 0;
+
+            userTrades.forEach(t => {
+                const levNum = parseInt(t.leverage.replace('x', '')) || 1;
+                const res = computePnL(t.type, t.entry, t.exit, t.qty, levNum);
+                totalPnL += res.pnl;
+                if (res.pnl >= 0) wins++; else losses++;
+            });
+
+            const winRate = total > 0 ? ((wins / total) * 100).toFixed(1) : 0.0;
+
+            document.getElementById('statTotalTrades').innerText = total;
+            document.getElementById('statWinRate').innerText = winRate + '%';
+            document.getElementById('statWins').innerText = wins;
+            document.getElementById('statLosses').innerText = losses;
+            document.getElementById('statExchange').innerText = currentUser.exchange;
+
+            const pnlEl = document.getElementById('statTotalPnL');
+            const pnlIcon = document.getElementById('statPnLIcon');
+            if (totalPnL >= 0) {
+                pnlEl.innerText = `+$${totalPnL.toFixed(2)}`;
+                pnlEl.className = "text-2xl font-bold mt-3 text-emerald-400";
+                pnlIcon.className = "w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center";
+                pnlIcon.innerHTML = '<i class="fa-solid fa-wallet text-sm"></i>';
+            } else {
+                pnlEl.innerText = `-$${Math.abs(totalPnL).toFixed(2)}`;
+                pnlEl.className = "text-2xl font-bold mt-3 text-brandred";
+                pnlIcon.className = "w-8 h-8 rounded-lg bg-red-500/10 text-brandred flex items-center justify-center";
+                pnlIcon.innerHTML = '<i class="fa-solid fa-wallet text-sm"></i>';
+            }
+
+            // Chart Bars
+            const barsContainer = document.getElementById('chartBarsContainer');
+            barsContainer.innerHTML = '';
+            if (userTrades.length === 0) {
+                barsContainer.innerHTML = '<div class="text-xs text-slate-500 m-auto">No trade data available for charting yet.</div>';
+            } else {
+                userTrades.slice(-10).forEach(t => {
+                    const levNum = parseInt(t.leverage.replace('x', '')) || 1;
+                    const res = computePnL(t.type, t.entry, t.exit, t.qty, levNum);
+                    const heightPercent = Math.min(Math.max(Math.abs(res.percent) * 3, 20), 100);
+                    const barColor = res.pnl >= 0 ? 'bg-emerald-500 hover:bg-emerald-400' : 'bg-red-500 hover:bg-red-400';
+                    
+                    const barWrapper = document.createElement('div');
+                    barWrapper.className = "flex flex-col items-center flex-1 h-full justify-end group relative cursor-pointer";
+                    barWrapper.innerHTML = `
+                        <div class="absolute -top-8 bg-slate-800 text-[10px] text-white px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-bordercol z-10">
+                            ${t.pair}: ${res.pnl >= 0 ? '+' : ''}$${res.pnl.toFixed(2)}
+                        </div>
+                        <div class="w-full max-w-[36px] ${barColor} rounded-t-lg transition-all" style="height: ${heightPercent}%"></div>
+                        <span class="text-[10px] text-slate-400 mt-1 truncate w-full text-center">${t.pair}</span>
+                    `;
+                    barsContainer.appendChild(barWrapper);
+                });
+            }
+
+            // Strategy Breakdown
+            const strategyCounts = {};
+            userTrades.forEach(t => {
+                strategyCounts[t.strategy] = (strategyCounts[t.strategy] || 0) + 1;
+            });
+            const stratContainer = document.getElementById('strategyBreakdown');
+            stratContainer.innerHTML = '';
+            if (Object.keys(strategyCounts).length === 0) {
+                stratContainer.innerHTML = '<div class="text-xs text-slate-500">No strategy logs found.</div>';
+            } else {
+                for (const [strat, count] of Object.entries(strategyCounts)) {
+                    const pct = Math.round((count / total) * 100);
+                    const row = document.createElement('div');
+                    row.innerHTML = `
+                        <div class="flex items-center justify-between text-xs mb-1">
+                            <span class="text-slate-300 font-medium">${strat}</span>
+                            <span class="text-slate-400">${count} trades (${pct}%)</span>
+                        </div>
+                        <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-bordercol">
+                            <div class="bg-blue-500 h-full rounded-full" style="width: ${pct}%"></div>
+                        </div>
+                    `;
+                    stratContainer.appendChild(row);
+                }
+            }
+        }
+
+        // --- TRADE JOURNAL CRUD ---
+        function renderTradesTable(filteredList = null) {
+            const userTrades = filteredList || trades.filter(t => t.userId === currentUser.id);
+            const tbody = document.getElementById('tradesTableBody');
+            const emptyMsg = document.getElementById('emptyTradesMsg');
+            tbody.innerHTML = '';
+
+            if (userTrades.length === 0) {
+                emptyMsg.classList.remove('hidden');
+                return;
+            } else {
+                emptyMsg.classList.add('hidden');
+            }
+
+            userTrades.forEach(t => {
+                const levNum = parseInt(t.leverage.replace('x', '')) || 1;
+                const res = computePnL(t.type, t.entry, t.exit, t.qty, levNum);
+                const isProfit = res.pnl >= 0;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/50 transition-colors border-b border-bordercol/50";
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-bold text-white">${t.pair}</td>
+                    <td class="py-3 px-4">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${t.type === 'Long' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}">${t.type}</span>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="text-slate-300">$${t.entry.toLocaleString()}</div>
+                        <div class="text-[10px] text-slate-500">Exit: $${t.exit.toLocaleString()}</div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="text-slate-300">${t.qty}</div>
+                        <div class="text-[10px] text-slate-500">${t.leverage}</div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] border border-bordercol">${t.strategy}</span>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="font-bold ${isProfit ? 'text-emerald-400' : 'text-brandred'}">${isProfit ? '+' : ''}$${res.pnl.toFixed(2)}</div>
+                        <div class="text-[10px] ${isProfit ? 'text-emerald-500' : 'text-red-500'}">${isProfit ? '+' : ''}${res.percent.toFixed(2)}%</div>
+                    </td>
+                    <td class="py-3 px-4 text-slate-400 text-[11px]">${t.date}</td>
+                    <td class="py-3 px-4 text-right space-x-1">
+                        <button onclick="viewTrade('${t.id}')" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-all" title="View Details"><i class="fa-solid fa-eye text-xs"></i></button>
+                        <button onclick="openEditTradeModal('${t.id}')" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg transition-all" title="Edit Trade"><i class="fa-solid fa-pen text-xs"></i></button>
+                        <button onclick="deleteTrade('${t.id}')" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-brandred rounded-lg transition-all" title="Delete Trade"><i class="fa-solid fa-trash text-xs"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterTrades() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const typeFilter = document.getElementById('filterType').value;
+            const stratFilter = document.getElementById('filterStrategy').value;
+
+            const userTrades = trades.filter(t => t.userId === currentUser.id);
+            const filtered = userTrades.filter(t => {
+                const matchQuery = t.pair.toLowerCase().includes(query) || t.strategy.toLowerCase().includes(query) || (t.notes && t.notes.toLowerCase().includes(query));
+                const matchType = typeFilter === "" || t.type === typeFilter;
+                const matchStrat = stratFilter === "" || t.strategy === stratFilter;
+                return matchQuery && matchType && matchStrat;
+            });
+
+            renderTradesTable(filtered);
+        }
+
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterType').value = '';
+            document.getElementById('filterStrategy').value = '';
+            renderTradesTable();
+        }
+
+        function openAddTradeModal() {
+            document.getElementById('tradeModalTitle').innerHTML = '<i class="fa-solid fa-plus-circle text-blue-400 mr-2"></i> Record Completed Trade';
+            document.getElementById('tradeForm').reset();
+            document.getElementById('editTradeId').value = '';
+            document.getElementById('tradeDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('livePnLPreview').innerText = '$0.00 (0.00%)';
+            document.getElementById('tradeModal').classList.remove('hidden');
+        }
+
+        function openEditTradeModal(id) {
+            const t = trades.find(item => item.id === id);
+            if (!t) return;
+            document.getElementById('tradeModalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-blue-400 mr-2"></i> Edit Trade Journal';
+            document.getElementById('editTradeId').value = t.id;
+            document.getElementById('tradePair').value = t.pair;
+            document.getElementById('tradeType').value = t.type;
+            document.getElementById('tradeEntry').value = t.entry;
+            document.getElementById('tradeExit').value = t.exit;
+            document.getElementById('tradeQty').value = t.qty;
+            document.getElementById('tradeLeverage').value = t.leverage;
+            document.getElementById('tradeStrategy').value = t.strategy;
+            document.getElementById('tradeDate').value = t.date;
+            document.getElementById('tradeNotes').value = t.notes || '';
+            document.getElementById('tradeScreenshot').value = t.screenshot || '';
+            
+            calculateLivePnL();
+            document.getElementById('tradeModal').classList.remove('hidden');
+        }
+
+        function closeTradeModal() {
+            document.getElementById('tradeModal').classList.add('hidden');
+        }
+
+        function handleSaveTrade(e) {
+            e.preventDefault();
+            const editId = document.getElementById('editTradeId').value;
+            const pair = document.getElementById('tradePair').value.toUpperCase();
+            const type = document.getElementById('tradeType').value;
+            const entry = parseFloat(document.getElementById('tradeEntry').value);
+            const exit = parseFloat(document.getElementById('tradeExit').value);
+            const qty = parseFloat(document.getElementById('tradeQty').value);
+            const leverage = document.getElementById('tradeLeverage').value;
+            const strategy = document.getElementById('tradeStrategy').value;
+            const date = document.getElementById('tradeDate').value;
+            const notes = document.getElementById('tradeNotes').value;
+            const screenshot = document.getElementById('tradeScreenshot').value || 'https://placehold.co/600x300/1e293b/10b981?text=Setup+Chart';
+
+            const tradeData = {
+                userId: currentUser.id,
+                pair, type, entry, exit, qty, leverage, strategy, date, notes, screenshot
+            };
+
+            if (editId) {
+                db.collection("trades").doc(editId).update(tradeData)
+                    .then(() => {
+                        closeTradeModal();
+                        fetchTradesFromFirestore();
+                    });
+            } else {
+                db.collection("trades").add(tradeData)
+                    .then(() => {
+                        closeTradeModal();
+                        fetchTradesFromFirestore();
+                    });
+            }
+        }
+
+        function deleteTrade(id) {
+            if (confirm("Are you sure you want to delete this trade record?")) {
+                db.collection("trades").doc(id).delete()
+                    .then(() => {
+                        fetchTradesFromFirestore();
+                    });
+            }
+        }
+
+        function viewTrade(id) {
+            const t = trades.find(item => item.id === id);
+            if (!t) return;
+            const levNum = parseInt(t.leverage.replace('x', '')) || 1;
+            const res = computePnL(t.type, t.entry, t.exit, t.qty, levNum);
+            const isProfit = res.pnl >= 0;
+
+            document.getElementById('viewPairBadge').innerText = t.pair;
+            document.getElementById('viewTypeBadge').innerText = t.type;
+            document.getElementById('viewTypeBadge').className = `px-2.5 py-1 rounded-lg text-xs font-semibold ${t.type === 'Long' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`;
+            document.getElementById('viewEntry').innerText = `$${t.entry.toLocaleString()}`;
+            document.getElementById('viewExit').innerText = `$${t.exit.toLocaleString()}`;
+            document.getElementById('viewQtyLev').innerText = `${t.qty} / ${t.leverage}`;
+            
+            const pnlEl = document.getElementById('viewPnL');
+            pnlEl.innerText = `${isProfit ? '+' : ''}$${res.pnl.toFixed(2)} (${isProfit ? '+' : ''}${res.percent.toFixed(2)}%)`;
+            pnlEl.className = `text-xs font-bold ${isProfit ? 'text-emerald-400' : 'text-brandred'}`;
+
+            document.getElementById('viewStrategy').innerText = t.strategy;
+            document.getElementById('viewDate').innerText = t.date;
+            document.getElementById('viewNotes').innerText = t.notes || 'No notes provided.';
+            document.getElementById('viewScreenshotImg').src = t.screenshot;
+
+            document.getElementById('viewModal').classList.remove('hidden');
+        }
+
+        function closeViewModal() {
+            document.getElementById('viewModal').classList.add('hidden');
+        }
+
+        // --- PROFILE MANAGEMENT ---
+        function handleUpdateProfile(e) {
+            e.preventDefault();
+            const newName = document.getElementById('profName').value;
+            const newExchange = document.getElementById('profExchange').value;
+
+            db.collection("users").doc(currentUser.id).update({
+                name: newName,
+                exchange: newExchange
+            }).then(() => {
+                currentUser.name = newName;
+                currentUser.exchange = newExchange;
+                document.getElementById('currentUserName').innerText = currentUser.name;
+                document.getElementById('currentExchangeLbl').innerText = `${currentUser.exchange} User`;
+                document.getElementById('profileFullName').innerText = currentUser.name;
+                document.getElementById('profileAvatarLetter').innerText = currentUser.name.charAt(0).toUpperCase();
+                alert('Profile preferences successfully updated in Firebase!');
+            });
+        }
+
+        // --- ADMIN DASHBOARD ---
+        function renderAdminOverview() {
+            document.getElementById('adminTotalUsers').innerText = allUsers.length;
+            document.getElementById('adminTotalTrades').innerText = trades.length;
+
+            let totalWins = 0;
+            trades.forEach(t => {
+                const lev = parseInt(t.leverage.replace('x', '')) || 1;
+                if (computePnL(t.type, t.entry, t.exit, t.qty, lev).pnl >= 0) totalWins++;
+            });
+            const avgWin = trades.length > 0 ? ((totalWins / trades.length) * 100).toFixed(1) : 0.0;
+            document.getElementById('adminAvgWinRate').innerText = avgWin + '%';
+
+            const tbody = document.getElementById('adminUsersTableBody');
+            tbody.innerHTML = '';
+
+            allUsers.forEach(u => {
+                const uTrades = trades.filter(t => t.userId === u.id);
+                let uWins = 0;
+                uTrades.forEach(t => {
+                    const lev = parseInt(t.leverage.replace('x', '')) || 1;
+                    if (computePnL(t.type, t.entry, t.exit, t.qty, lev).pnl >= 0) uWins++;
+                });
+                const uWinRate = uTrades.length > 0 ? ((uWins / uTrades.length) * 100).toFixed(1) : 0.0;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/50 transition-colors border-b border-bordercol/50";
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-bold text-white flex items-center space-x-2">
+                        <div class="w-7 h-7 rounded-lg bg-blue-600/20 text-blue-400 font-bold flex items-center justify-center text-xs">${u.name.charAt(0)}</div>
+                        <span>${u.name}</span>
+                    </td>
+                    <td class="py-3 px-4 text-slate-300">${u.email}</td>
+                    <td class="py-3 px-4">
+                        <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] border border-bordercol">${u.exchange}</span>
+                    </td>
+                    <td class="py-3 px-4 font-bold text-white">${uTrades.length} trades</td>
+                    <td class="py-3 px-4">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${uWinRate >= 50 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">Win Rate: ${uWinRate}%</span>
+                    </td>
+                    <td class="py-3 px-4 text-right">
+                        <button onclick="reviewStudentJournal('${u.id}')" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-semibold shadow transition-all flex items-center space-x-1.5 ml-auto">
+                            <i class="fa-solid fa-magnifying-glass-chart"></i>
+                            <span>Review Journal</span>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function reviewStudentJournal(userId) {
+            const student = allUsers.find(u => u.id === userId);
+            if (!student) return;
+            currentUser = student;
+            switchTab('dashboard');
+            alert(`Now reviewing trade journal for student: ${student.name}`);
+        }
+
+        function renderAdminReports() {
+            const stratCounts = {};
+            trades.forEach(t => {
+                stratCounts[t.strategy] = (stratCounts[t.strategy] || 0) + 1;
+            });
+            const container = document.getElementById('adminStrategyStats');
+            container.innerHTML = '';
+            for (const [strat, count] of Object.entries(stratCounts)) {
+                const pct = Math.round((count / (trades.length || 1)) * 100);
+                const row = document.createElement('div');
+                row.innerHTML = `
+                    <div class="flex items-center justify-between text-xs mb-1">
+                        <span class="text-slate-300 font-medium">${strat}</span>
+                        <span class="text-slate-400">${count} logs (${pct}%)</span>
+                    </div>
+                    <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-bordercol">
+                        <div class="bg-cyan-500 h-full rounded-full" style="width: ${pct}%"></div>
+                    </div>
+                `;
+                container.appendChild(row);
+            }
+        }
+    </script>
+</body>
+</html>
